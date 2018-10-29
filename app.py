@@ -1,11 +1,13 @@
 from flask import Flask, render_template
 from flask_assistant import Assistant, ask, tell
 from steem import Steem
+from steem.converter import Converter
 from rep_calculator import rep_cal # To calculate reputation from raw steemd rep
 from cleaner import clean
 import math
 
 s = Steem()
+c = Converter()
 app = Flask(__name__)
 assist = Assistant(app, route='/api')
 
@@ -47,7 +49,29 @@ def vote_worth(vwusername):
 		
 #------------------------------------------------------------
 
-		
+# Is used to calculate the steem power of a given user
+@assist.action('steempower')
+def r_steempower():
+     ask4_u = "What's your username?"
+     return ask(ask4_u)
+
+	
+@assist.action('sp_username')
+def steempower(sp_username):
+
+    def vests2sp(v):
+        ratio = c.steem_per_mvests()
+        sp = v * ratio / 1e6
+        return str(round(sp, 1))
+	
+    user = s.get_accounts([sp_username])
+    total = float(clean(user[0]['vesting_shares']))+float(clean(user[0]['received_vesting_shares']))-float(clean(user[0]['delegated_vesting_shares']))
+    owned = float(clean(user[0]['vesting_shares']))
+    delegated = float(clean(user[0]['delegated_vesting_shares']))
+    received = float(clean(user[0]['received_vesting_shares']))
+	
+    return ask('Your total Steem Power is '+vests2sp(total)+'...'+' You own '+vests2sp(owned)+'. You are delegateing '+vests2sp(delegated)+' and you are receiving '+vests2sp(received))
+	
 # run Flask app
 if __name__ == '__main__':
     app.run(debug=True)
