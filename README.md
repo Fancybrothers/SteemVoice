@@ -1,6 +1,6 @@
 # SteemVoice
 ### What is Steem Voice?
-Steem Voice is a (WIP) Google Assistant app designed for Steemit users to help them interact with the Steem blockchaine using their voice.
+Steem Voice is a (WIP) Google Assistant app designed for Steemit users to help them interact with the Steem blockchain using their voice.
 ##### Current Commands
 - What's my reputation? / Is used to calculate the reputation of a given user
 - How much is my vote worth? / Is used to calculate the upvote worth of a given user
