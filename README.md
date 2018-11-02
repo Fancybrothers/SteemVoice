@@ -6,7 +6,7 @@ Steem Voice is a (WIP) Google Assistant app designed for Steemit users to help t
 - How much is my vote worth? / Is used to calculate the upvote worth of a given user
 - How much is my steem power? / Is used to calculate the steem power of a given user
 - I want to check a user's latest post / Is used to get a user's latest post
-##### Contact Me
+### Contact Me
 You can get in touch with me on Discord  at Fancybrothers#7429 or on Steem.chat at fancybrothers.
-##### Donation
+### Donation
 You can donate Steem to my account @fancybrothers on Steemit
