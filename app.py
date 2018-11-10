@@ -2,7 +2,7 @@ from flask import Flask
 from flask_assistant import Assistant, ask, tell
 from steem import Steem
 from steem.converter import Converter
-from steem.blog import Blog
+from steem.blog import Blog 
 from steem.account import Account
 from steem.amount import Amount
 import requests
@@ -25,7 +25,7 @@ class Steemian:
         self.steemprice = self.cmc_price('1230')
         self.sbdprice = self.cmc_price('1312')
 		
-    def calculate_voteworth(self):
+    def calculate_voteworth(self): # To calculate the vote worth
         reward_fund = s.get_reward_fund()
         sbd_median_price = s.get_current_median_history_price()	
         vests = Amount(self.data['vesting_shares'])+Amount(self.data['received_vesting_shares'])-Amount(self.data['delegated_vesting_shares'])
@@ -36,9 +36,9 @@ class Steemian:
         return ('$'+str(round(estimated_upvote, 2)))
 		
 		
-    def calculate_steempower(self):
+    def calculate_steempower(self): # To calculate the steem power
 	
-        def vests2sp(v):
+        def vests2sp(v): # To convert vests into steem power
             sp = c.vests_to_sp(v)
             return str(round(sp, 1))
 		
@@ -48,12 +48,12 @@ class Steemian:
         received = Amount(self.data['received_vesting_shares']).amount
         return('Your total Steem Power is %s ...  You own %s. You are delegating %s and you are receiving %s.'% (vests2sp(total),vests2sp(owned),vests2sp(delegated), vests2sp(received)))
 	
-    def cmc_price(self,id):
+    def cmc_price(self,id): # To get the price of a given currency
         r = requests.get("https://api.coinmarketcap.com/v2/ticker/"+id)
         data = r.json()
         return data['data']['quotes']['USD']['price']
 		
-    def calculate_accountworth(self):
+    def calculate_accountworth(self): # To calculate the account worth
         SBD_price = self.cmc_price('1312')
         STEEM_price = self.cmc_price('1230')
         accountworth = (self.wallet['total']['STEEM'] + self.data.sp)*STEEM_price + self.wallet['total']['SBD']*SBD_price
@@ -83,12 +83,6 @@ def r_voteworth():
     user = Steemian(St_username)
     return ask(user.upvoteworth)
 		
-# Is used to calculate the steem power of a given user
-
-@assist.action('steempower')
-def r_steempower():	
-    user = Steemian(St_username)
-    return ask(user.steempower)
 
 # Is used to get a user's latest post
 
@@ -98,47 +92,31 @@ def r_last_post():
     post = b.take(1)
     return ask('Your latest post is: \n'+ post[0]['title'])
 
-# Is used to get the available steem of a given user
-
-@assist.action('steem')
-def r_steem():	
+@assist.action('wallet')
+def r_desire(desire):
     user = Steemian(St_username)
-    return ask('%s STEEM' % user.wallet['available']['STEEM'])
-	
-# Is used to get the available sbd of a given user
+    if desire == 'steem': # Is used to get the available steem of a given user
+	    return ask('%s STEEM' % user.wallet['available']['STEEM'])
+    elif desire == 'sbd': # Is used to get the available sbd of a given user
+	    return ask('%s Steem Dollars' % user.wallet['available']['SBD'])
+    elif desire == 'savings': # Is used to get the savings of a given user
+	    return ask('You have %s Steem Dollars and %s STEEM in your savings' % (user.wallet['savings']['SBD'],user.wallet['savings']['STEEM']))
+    elif desire == 'accountworth': # Is used to calculate the account worth
+	    return ask('Your account is worth approximately $%i according to coinmarketcap\'s latest prices.' % user.accountworth)
+    elif desire == 'steempower': # Is used to calculate the steem power of a given user
+	    return ask(user.steempower)
+    else:
+	    return ask('Error! Please try again')
 
-@assist.action('sbd')
-def r_sbd():	
+@assist.action('price')
+def r_price(currency):
     user = Steemian(St_username)
-    return ask('%s Steem Dollars' % user.wallet['available']['SBD'])
-	
-# Is used to get the savings of a given user
-
-@assist.action('savings')
-def r_savings():	
-    user = Steemian(St_username)
-    return ask('You have %s Steem Dollars and %s STEEM in your savings' % (user.wallet['savings']['SBD'],user.wallet['savings']['STEEM']))
-
-# Is used to calculate the account worth
-
-@assist.action('accountworth')
-def r_accountworth():	
-    user = Steemian(St_username)
-    return ask('Your account is worth approximately $%i according to coinmarketcap\'s latest prices.' % user.accountworth)
-	
-# Is used to get the price of SBD
-
-@assist.action('sbdprice')
-def r_sbdprice():	
-    user = Steemian(St_username)
-    return ask('Steem Dollars is now worth $'+str(round(user.sbdprice,2))+' according to coinmarketcap.')
-	
-# Is used to get the price of STEEM
-
-@assist.action('steemprice')
-def r_steemprice():	
-    user = Steemian(St_username)
-    return ask('Steem is now worth $'+str(round(user.steemprice,2))+' according to coinmarketcap.')
+    if currency == 'steem': # Is used to get the price of STEEM
+	    return ask('Steem is now worth $'+str(round(user.steemprice,2))+' according to coinmarketcap.')
+    elif currency == 'sbd': # Is used to get the price of SBD
+	    return ask('Steem Dollars is now worth $'+str(round(user.sbdprice,2))+' according to coinmarketcap.')	
+    else:
+	    return ask('Error! Please try again')
 						
 # run Flask app
 if __name__ == '__main__':
