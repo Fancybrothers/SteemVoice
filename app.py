@@ -4,9 +4,7 @@ from steem import Steem
 from steem.converter import Converter
 from steem.blog import Blog
 from steem.account import Account
-from rep_calculator import rep_cal # To calculate reputation from raw steemd rep
-from cleaner import clean
-import math
+from steem.amount import Amount
 
 St_username = ""
 s = Steem()
@@ -18,18 +16,18 @@ class Steemian:
     def __init__(self, St_username):
         self.username = St_username
         self.data = Account(self.username)
-        self.reputation = str(rep_cal(self.data['reputation']))
+        self.reputation = str(self.data.rep)
         self.upvoteworth = self.calculate_voteworth()
         self.steempower = self.calculate_steempower()
 		
 		
     def calculate_voteworth(self):
         reward_fund = s.get_reward_fund()
-        sbd_median_price = s.get_current_median_history_price()
-        vests = float(clean(self.data['vesting_shares']))+float(clean(self.data['received_vesting_shares']))-float(clean(self.data['delegated_vesting_shares']))
+        sbd_median_price = s.get_current_median_history_price()	
+        vests = Amount(self.data['vesting_shares'])+Amount(self.data['received_vesting_shares'])-Amount(self.data['delegated_vesting_shares'])
         vestingShares = int(vests * 1e6);
         rshares = 0.02 * vestingShares
-        estimated_upvote = rshares / float(reward_fund['recent_claims']) * float(clean(reward_fund['reward_balance'])) * float(clean(sbd_median_price['base']))	
+        estimated_upvote = rshares / float(reward_fund['recent_claims']) * Amount(reward_fund['reward_balance']).amount * Amount(sbd_median_price['base']).amount
         estimated_upvote = estimated_upvote * (float(self.data['voting_power'])/10000)
         return ('$'+str(round(estimated_upvote, 2)))
 		
@@ -40,12 +38,12 @@ class Steemian:
             sp = c.vests_to_sp(v)
             return str(round(sp, 1))
 		
-        total = float(clean(self.data['vesting_shares']))+float(clean(self.data['received_vesting_shares']))-float(clean(self.data['delegated_vesting_shares']))
-        owned = float(clean(self.data['vesting_shares']))
-        delegated = float(clean(self.data['delegated_vesting_shares']))
-        received = float(clean(self.data['received_vesting_shares']))
-        return(   'Your total Steem Power is '  +  vests2sp(total)+  '...'  +  ' You own '  +  vests2sp(owned)  +  '. You are delegating '  +  vests2sp(delegated)  +  ' and you are receiving '  +  vests2sp(received)  )
-
+        total = float(Amount(self.data['vesting_shares'])+Amount(self.data['received_vesting_shares'])-Amount(self.data['delegated_vesting_shares']))
+        owned = Amount(self.data['vesting_shares']).amount
+        delegated = Amount(self.data['delegated_vesting_shares']).amount
+        received = Amount(self.data['received_vesting_shares']).amount
+        return('Your total Steem Power is %s ...  You own %s. You are delegating %s and you are receiving %s.'% (vests2sp(total),vests2sp(owned),vests2sp(delegated), vests2sp(received)))
+		
 # Setting a new username and changing it
 @assist.action('Change_username')
 @assist.action('Welcome_username')
