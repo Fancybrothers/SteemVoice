@@ -22,8 +22,8 @@ class Steemian:
         self.steempower = self.calculate_steempower()
         self.wallet = self.data.balances
         self.accountworth = self.calculate_accountworth()
-        self.steemprice = self.cmc_price('1230')
-        self.sbdprice = self.cmc_price('1312')
+        self.steemprice = self.cmc_price('1230') # To get the price of Steem form coinmarketcap
+        self.sbdprice = self.cmc_price('1312')   # To get the price of Steem Dollars form coinmarketcap
 		
     def calculate_voteworth(self): # To calculate the vote worth
         reward_fund = s.get_reward_fund()
@@ -90,7 +90,10 @@ def r_voteworth():
 def r_last_post():	
     b = Blog(St_username)
     post = b.take(1)
-    return ask('Your latest post is: \n'+ post[0]['title'])
+    resp = ask('Your latest post is: \n'+ post[0]['title'])
+    postlink = 'https://steemit.com/@'+St_username+'/'+post[0]['permlink']
+    resp.link_out('The post', postlink) # Is used to create a button that takes you to the post
+    return resp
 
 @assist.action('wallet')
 def r_desire(desire):
