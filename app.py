@@ -5,13 +5,17 @@ from steem.converter import Converter
 from steem.blog import Blog 
 from steem.account import Account
 from steem.amount import Amount
-import requests
+import requests, json
 
 St_username = ""
+Tag = ''
 s = Steem()
 c = Converter()
 app = Flask(__name__)
+app.config['ASSIST_ACTIONS_ON_GOOGLE'] = True # To enable Rich Messages
 assist = Assistant(app, route='/api')
+posts = s.get_discussions_by_trending({"limit":"8"}) # To cache the top 8 trending posts
+
 
 class Steemian:
     def __init__(self, St_username):
@@ -24,6 +28,7 @@ class Steemian:
         self.accountworth = self.calculate_accountworth()
         self.steemprice = self.cmc_price('1230') # To get the price of Steem form coinmarketcap
         self.sbdprice = self.cmc_price('1312')   # To get the price of Steem Dollars form coinmarketcap
+        self.bloglink = 'https://steemit.com/@'+St_username # To get the price user's blog link
 		
     def calculate_voteworth(self): # To calculate the vote worth
         reward_fund = s.get_reward_fund()
@@ -58,7 +63,20 @@ class Steemian:
         STEEM_price = self.cmc_price('1230')
         accountworth = (self.wallet['total']['STEEM'] + self.data.sp)*STEEM_price + self.wallet['total']['SBD']*SBD_price
         return round(accountworth,0)
-        
+   ######################## Functions ######################################
+   
+def getpostimg(i): # To get a post's thumbnail
+    global posts
+    metadata = posts[i]['json_metadata']
+    imagedata = json.loads(metadata)
+    try : # To test if the post is a dtube video
+        imglink = 'https://snap1.d.tube/ipfs/'+imagedata['video']['info']['snaphash'] # To get the video's thumbnail form d.tube
+        return(imglink)
+    except KeyError: # If it's a regular post
+        return imagedata['image'][0]
+     
+ 
+   ##############################################################
 		
 # Setting a new username and changing it
 @assist.action('Change_username')
@@ -89,12 +107,13 @@ def r_voteworth():
 @assist.action('last_post')
 def r_last_post():	
     b = Blog(St_username)
+    user = Steemian(St_username)
     post = b.take(1)
     resp = ask('Your latest post is: \n'+ post[0]['title'])
-    postlink = 'https://steemit.com/@'+St_username+'/'+post[0]['permlink']
+    postlink = user.bloglink+'/'+post[0]['permlink']
     resp.link_out('The post', postlink) # Is used to create a button that takes you to the post
     return resp
-
+	
 @assist.action('wallet')
 def r_desire(desire):
     user = Steemian(St_username)
@@ -120,7 +139,42 @@ def r_price(currency):
 	    return ask('Steem Dollars is now worth $'+str(round(user.sbdprice,2))+' according to coinmarketcap.')	
     else:
 	    return ask('Error! Please try again')
-						
+		
+@assist.action('trending') # Is used to display the top 8 trending posts (a certain tag can be specified)
+def r_trendingposts(Tag):
+    global posts
+    if Tag != '': # If a certain tag is specified -posts- will be reloaded into the top 8 trending posts of that tag
+        posts = s.get_discussions_by_trending({"tag":Tag,"limit":"8"})
+    resp = ask('Here are the top 8 trending posts').build_carousel()  # To make a new carousel
+    for i in range(8): # Add each post to the carousel
+        resp.add_item(posts[i]['title'],
+                      key=(str(i)), # This key will be used if the user chooses a certain post
+                      img_url=getpostimg(i)
+                      )					  
+    return resp
+	
+@assist.action('trendingresp') # To show a card of the post chosen
+def r_trendingresp(OPTION):
+    global posts
+    OPTION = int(OPTION) # This is the key of the chosen post
+    postlink = 'https://steemit.com/@'+posts[OPTION]['author']+'/'+posts[OPTION]['permlink']
+    resp = ask('Click the button below to open the post')
+    date,time = posts[OPTION]['created'].split('T') 
+    resp.card(title=posts[OPTION]['title'],
+              text=('A post by %s created on %s at %s' % (posts[OPTION]['author'],date,time)),
+              img_url=getpostimg(OPTION),
+              img_alt='test', # This field is required
+              link=postlink,
+              linkTitle='Open The post'		  
+              )
+
+    return resp
+
+@assist.action('openblog') # Retruns a button to the user's blog
+def r_trendingposts():
+    user = Steemian(St_username)	  
+    return ask('Click the button below to open your blog').link_out('Blog',user.bloglink)
+	
 # run Flask app
 if __name__ == '__main__':
     app.run(debug=True)
