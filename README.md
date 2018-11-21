@@ -13,9 +13,9 @@ Steem Voice is a (WIP) Google Assistant app designed for Steemit users to help t
 - How much Savings do I have? / Is used to get your savings (both STEEM and SBD)
 - What's the price of Steem? / Is used to get STEEM's price from coinmarketcap
 - What's the price of SBD? / Is used to get SBD's price from coinmarketcap
-- What's trending / Returns the top 8 trending posts
-- What's trending in (tag) / Returns the top 8 trending posts of that tag
+- What's _category in _tag (e.g what's new in science)/ Returns a lists of posts from a certain category = (new,trending,hot) (tag isn't required) 
 - Open my blog / Returns a button to the user's blog
+- Open my feed / Returns a list of posts from the user's feed
 ### Contact Me
 You can get in touch with me on Discord  at Fancybrothers#7429 or on Steem.chat at fancybrothers.
 ### Donation
