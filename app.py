@@ -73,7 +73,10 @@ def getpostimg(i): # To get a post's thumbnail
         imglink = 'https://snap1.d.tube/ipfs/'+imagedata['video']['info']['snaphash'] # To get the video's thumbnail form d.tube
         return(imglink)
     except KeyError: # If it's a regular post
-        return imagedata['image'][0]
+        try:
+            return imagedata['image'][0]
+        except: # If no image is available 
+            return 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/No_image_available_600_x_450.svg/320px-No_image_available_600_x_450.svg.png' # a "no image available" picture from wikimedia
      
  
    ##############################################################
@@ -141,18 +144,28 @@ def r_price(currency):
 	    return ask('Error! Please try again')
 		
 @assist.action('trending') # Is used to display the top 8 trending posts (a certain tag can be specified)
-def r_trendingposts(Tag):
+def r_trendingposts(CTG,Tag):
     global posts
-    if Tag != '': # If a certain tag is specified -posts- will be reloaded into the top 8 trending posts of that tag
-        posts = s.get_discussions_by_trending({"tag":Tag,"limit":"8"})
-    resp = ask('Here are the top 8 trending posts').build_carousel()  # To make a new carousel
+    if (Tag != '')or (CTG != 'trending'): # If a certain tag is specified or another category -posts- will be reloaded into the top 8 trending posts of that tag
+        posts = eval('s.get_discussions_by_'+CTG)({"tag":Tag,"limit":"8"})
+    if Tag == '':
+        Tag = 'all tags' # To keep a proper resp statment even when no tag is specified 
+    if CTG == 'created':
+        resp = ask(('Here are the newest posts in %s') % (Tag)).build_carousel()
+    else:
+        resp = ask(('Here are the top %s posts in %s') % (CTG,Tag)).build_carousel()  # To make a new carousel
     for i in range(8): # Add each post to the carousel
-        resp.add_item(posts[i]['title'],
-                      key=(str(i)), # This key will be used if the user chooses a certain post
-                      img_url=getpostimg(i)
-                      )					  
+        try:
+            resp.add_item(posts[i]['title'],
+                          key=(str(i)), # This key will be used if the user chooses a certain post
+                          img_url=getpostimg(i)
+                          )				
+        except IndexError: # If the available posts are less than 8 (mostly promoted ones)
+            break	
+    print(resp)			
     return resp
-	
+
+@assist.action('r_openfeed')
 @assist.action('trendingresp') # To show a card of the post chosen
 def r_trendingresp(OPTION):
     global posts
@@ -174,6 +187,21 @@ def r_trendingresp(OPTION):
 def r_trendingposts():
     user = Steemian(St_username)	  
     return ask('Click the button below to open your blog').link_out('Blog',user.bloglink)
+
+@assist.action('openfeed') # Retruns a list of posts from the user's list
+def r_feed():
+    global posts
+    posts = s.get_discussions_by_feed({"tag":St_username,"limit":"10"})	
+    resp = ask('Here are the latest posts from your feed').build_carousel()
+    for i in range(10):
+         try:
+            resp.add_item(posts[i]['title'],
+                          key=(str(i)), # This key will be used if the user chooses a certain post
+                          img_url=getpostimg(i)
+                          )				
+         except IndexError: # If the available posts are less than 8
+            break	
+    return resp	
 	
 # run Flask app
 if __name__ == '__main__':
