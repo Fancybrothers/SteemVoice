@@ -1,10 +1,12 @@
-from flask import Flask
+from flask import Flask, request, render_template
 from flask_assistant import Assistant, ask, tell
 from steem import Steem
 from steem.converter import Converter
 from steem.blog import Blog 
 from steem.account import Account
 from steem.amount import Amount
+from steemconnect.client import Client
+from steemconnect.operations import Follow, Unfollow, Mute
 import requests, json
 
 St_username = ""
@@ -15,7 +17,10 @@ app = Flask(__name__)
 app.config['ASSIST_ACTIONS_ON_GOOGLE'] = True # To enable Rich Messages
 assist = Assistant(app, route='/api')
 posts = s.get_discussions_by_trending({"limit":"8"}) # To cache the top 8 trending posts
-
+client_id = "" # Steemconnect client id
+client_secret = "" # Steemconnect client secret
+server = '' # For testing purposes, you can change the server here.
+sc = Client(client_id=client_id, client_secret=client_secret)
 
 class Steemian:
     def __init__(self, St_username):
@@ -34,7 +39,7 @@ class Steemian:
         reward_fund = s.get_reward_fund()
         sbd_median_price = s.get_current_median_history_price()	
         vests = Amount(self.data['vesting_shares'])+Amount(self.data['received_vesting_shares'])-Amount(self.data['delegated_vesting_shares'])
-        vestingShares = int(vests * 1e6);
+        vestingShares = int(vests * 1e6)
         rshares = 0.02 * vestingShares
         estimated_upvote = rshares / float(reward_fund['recent_claims']) * Amount(reward_fund['reward_balance']).amount * Amount(sbd_median_price['base']).amount
         estimated_upvote = estimated_upvote * (float(self.data['voting_power'])/10000)
@@ -80,13 +85,21 @@ def getpostimg(i): # To get a post's thumbnail
      
  
    ##############################################################
+   
+ # Returns a welcome msg and refreshes the access token
+@assist.action('Welcome')
+def Welcome():
+    sc.access_token = None
+    return ask('Hello, Steem Voice is here! \nCan you provide me with a valid username?')
+	
 		
 # Setting a new username and changing it
 @assist.action('Change_username')
 @assist.action('Welcome_username')
-def Welcome(username):
+def r_Welcome(username):
     global St_username
     St_username = username
+    sc.access_token = None
     return ask('Got it. How can I assist?')
 
 	
@@ -184,7 +197,7 @@ def r_trendingresp(OPTION):
     return resp
 
 @assist.action('openblog') # Retruns a button to the user's blog
-def r_trendingposts():
+def r_openblog():
     user = Steemian(St_username)	  
     return ask('Click the button below to open your blog').link_out('Blog',user.bloglink)
 
@@ -202,6 +215,55 @@ def r_feed():
          except IndexError: # If the available posts are less than 8
             break	
     return resp	
+
+# Allows the user to connect their account using Steemconnect
+
+@assist.action('login') 
+def r_login():
+    login_url = sc.get_login_url( 
+        server + "/login",  # This is the callback URL
+        "login,custom_json", # The scopes needed (login allows us to verify the user'steem identity while custom_json allows us to Follow, unfollow and mute)
+    )
+    resp = ask("Please use the button below to login with SteemConnect")
+    resp.link_out('the login page', login_url) # To return the button that takes the user to the login page
+    return resp
+
+# To check if the user successfully connected his account
+
+@assist.action('check')	
+def r_check():
+    if sc.access_token == None: # No access token
+        return ask('Error, Please try to connect your account')
+    else:
+        return ask('Hello %s ! You can now use commands such as follow, unfollow, mute ...' % sc.me()["name"]) 
+
+@assist.action('follow')	
+def r_follow(inst,username):
+    try:
+        if inst == 'follow': # To follow a certain user
+            follow = Follow(sc.me()["name"], username)
+            sc.broadcast([follow.to_operation_structure()])
+            return ask('Done, you are now following %s' % username)
+        elif inst == 'unfollow': # To unfollow a certain user
+            unfollow = Unfollow(sc.me()["name"], username)
+            sc.broadcast([unfollow.to_operation_structure()])
+            return ask('Done, you are no longer following %s' % username)
+        elif inst == 'mute': # To mute a certain user
+            ignore = Mute(sc.me()["name"], username)
+            sc.broadcast([ignore.to_operation_structure()])
+            return ask('Done, %s is now muted' % username)
+        else:
+            return ask('Error, Please try again!')
+    except ValueError:
+        return ask('Please connect your account before using this command')
+
+# Allows setting the access token and Shows the page when user successfully authorizes the app
+
+@app.route('/login')
+def loginpage():
+    sc.access_token = request.args.get("access_token")
+    return render_template('success.html', variable = sc.me()["name"])
+	 
 	
 # run Flask app
 if __name__ == '__main__':
