@@ -16,6 +16,12 @@ Steem Voice is a (WIP) Google Assistant app designed for Steemit users to help t
 - What's _category in _tag (e.g what's new in science)/ Returns a lists of posts from a certain category = (new,trending,hot) (tag isn't required) 
 - Open my blog / Returns a button to the user's blog
 - Open my feed / Returns a list of posts from the user's feed
+- Connect my account / Allows the user to connect their account to the app to use advanced commands
+- Check / To check if the user successfully connected his account
+#### Advanced Commands
+- Follow (user) / To follow a certain user
+- Unfollow (user) / To unfollow a certain user
+- Mute (user) / To mute a certain user
 ### Contact Me
 You can get in touch with me on Discord  at Fancybrothers#7429 or on Steem.chat at fancybrothers.
 ### Donation
