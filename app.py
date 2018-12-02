@@ -9,7 +9,7 @@ from steemconnect.client import Client
 from steemconnect.operations import Follow, Unfollow, Mute
 import requests, json
 
-St_username = ""
+St_username = "" 
 Tag = ''
 s = Steem()
 c = Converter()
@@ -256,6 +256,53 @@ def r_follow(inst,username):
             return ask('Error, Please try again!')
     except ValueError:
         return ask('Please connect your account before using this command')
+
+# To check if you are following a user
+
+@assist.action('followingcheck')
+def r_followingcheck(username):
+    count = s.get_follow_count(St_username)['following_count'] # To get the total number of following
+    thousands = int(count/1000)
+    other = count%1000
+    lastuser = 0
+    flist = []
+    for i in range(thousands):  # s.get_following has a limit of 1000 so I have to break the total followers into groups of 1000
+        flist.extend(s.get_following(St_username,lastuser,'blog',1000))
+        lastuser = flist[-1]['following']
+    flist.extend(s.get_following(St_username,lastuser,'blog',other))
+    cond = False # Not following
+    for i in range(count):
+        if flist[i]['following'] == username.strip(): # To remove the extra space
+            cond = True # Following
+
+    if cond:
+        return ask('You are following %s' % username)
+    else:
+        return ask('You are not following %s' % username)
+
+# To check if a user is following you
+
+@assist.action('followcheck')
+def r_followcheck(username):
+    count = s.get_follow_count(St_username)['follower_count']  # To get the total number of followers
+    thousands = int(count/1000)
+    other = count%1000
+    lastuser = 0
+    flist = []
+    for i in range(thousands):  
+        flist.extend(s.get_followers(St_username,lastuser,'blog',1000))
+        lastuser = flist[-1]['follower']
+    flist.extend(s.get_followers(St_username,lastuser,'blog',other))
+    cond = False
+    for i in range(count):
+        if flist[i]['follower'] == username.strip():
+            cond = True
+
+    if cond:
+        return ask('%s is following you' % username)
+    else:
+        return ask('%s is not following you' % username)
+
 
 # Allows setting the access token and Shows the page when user successfully authorizes the app
 
