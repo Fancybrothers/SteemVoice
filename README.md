@@ -18,6 +18,8 @@ Steem Voice is a (WIP) Google Assistant app designed for Steemit users to help t
 - Open my feed / Returns a list of posts from the user's feed
 - Connect my account / Allows the user to connect their account to the app to use advanced commands
 - Check / To check if the user successfully connected his account
+- Is (user) following me? / To check if a user is following you
+- Am I following (user)? / To check if you are following a user
 #### Advanced Commands
 - Follow (user) / To follow a certain user
 - Unfollow (user) / To unfollow a certain user
