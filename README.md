@@ -20,10 +20,14 @@ Steem Voice is a (WIP) Google Assistant app designed for Steemit users to help t
 - Check / To check if the user successfully connected his account
 - Is (user) following me? / To check if a user is following you
 - Am I following (user)? / To check if you are following a user
+- Open my comments / Returns a button to the user's comments
+- Open replies / Returns a button to the user's replies
+- Delegate (number) to (user) / Returns a Steemconnect link for the delegation
 #### Advanced Commands
 - Follow (user) / To follow a certain user
 - Unfollow (user) / To unfollow a certain user
 - Mute (user) / To mute a certain user
+- Claim rewards / To claim all of the user's rewards
 ### Contact Me
 You can get in touch with me on Discord  at Fancybrothers#7429 or on Steem.chat at fancybrothers.
 ### Donation
