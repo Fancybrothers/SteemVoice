@@ -6,7 +6,7 @@ from steem.blog import Blog
 from steem.account import Account
 from steem.amount import Amount
 from steemconnect.client import Client
-from steemconnect.operations import Follow, Unfollow, Mute
+from steemconnect.operations import Follow, Unfollow, Mute, ClaimRewardBalance
 import requests, json
 
 St_username = "" 
@@ -28,13 +28,20 @@ class Steemian:
         self.data = Account(self.username)
         self.reputation = str(self.data.rep)
         self.upvoteworth = self.calculate_voteworth()
-        self.steempower = self.calculate_steempower()
+        self.steempower = self.calculate_steempower(True)
+        self.availablesp = self.calculate_steempower(False) # To get the amount of Steempower that can be delegated
         self.wallet = self.data.balances
         self.accountworth = self.calculate_accountworth()
         self.steemprice = self.cmc_price('1230') # To get the price of Steem form coinmarketcap
         self.sbdprice = self.cmc_price('1312')   # To get the price of Steem Dollars form coinmarketcap
         self.bloglink = 'https://steemit.com/@'+St_username # To get the price user's blog link
-		
+        self.rewards = [self.data["reward_steem_balance"],self.data["reward_sbd_balance"],self.data["reward_vesting_balance"]]
+        if self.data["next_vesting_withdrawal"] != "1969-12-31T23:59:59": # Return True if the user is powering down
+            self.powerdown = True
+        else:
+            self.powerdown = False
+
+
     def calculate_voteworth(self): # To calculate the vote worth
         reward_fund = s.get_reward_fund()
         sbd_median_price = s.get_current_median_history_price()	
@@ -46,7 +53,7 @@ class Steemian:
         return ('$'+str(round(estimated_upvote, 2)))
 		
 		
-    def calculate_steempower(self): # To calculate the steem power
+    def calculate_steempower(self,cd): # To calculate the steem power
 	
         def vests2sp(v): # To convert vests into steem power
             sp = c.vests_to_sp(v)
@@ -56,8 +63,11 @@ class Steemian:
         owned = Amount(self.data['vesting_shares']).amount
         delegated = Amount(self.data['delegated_vesting_shares']).amount
         received = Amount(self.data['received_vesting_shares']).amount
-        return('Your total Steem Power is %s ...  You own %s. You are delegating %s and you are receiving %s.'% (vests2sp(total),vests2sp(owned),vests2sp(delegated), vests2sp(received)))
-	
+        if cd: # A switch between availablesp and steempower 
+            return('Your total Steem Power is %s ...  You own %s. You are delegating %s and you are receiving %s.'% (vests2sp(total),vests2sp(owned),vests2sp(delegated), vests2sp(received)))
+        else:
+            return(float(vests2sp(owned - delegated)))
+
     def cmc_price(self,id): # To get the price of a given currency
         r = requests.get("https://api.coinmarketcap.com/v2/ticker/"+id)
         data = r.json()
@@ -83,7 +93,14 @@ def getpostimg(i): # To get a post's thumbnail
         except: # If no image is available 
             return 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/No_image_available_600_x_450.svg/320px-No_image_available_600_x_450.svg.png' # a "no image available" picture from wikimedia
      
- 
+def eligible_delegation(user,num): # To check if the delegation is possible
+    user = Steemian(user)
+    if user.powerdown:
+        return ('You are powering down')
+    elif user.availablesp < num:
+        return ('Insufficient Available Steempower')
+    else: # If the user isn't powering down and there's enough SP
+        return ('eligible')
    ##############################################################
    
  # Returns a welcome msg and refreshes the access token
@@ -303,6 +320,41 @@ def r_followcheck(username):
     else:
         return ask('%s is not following you' % username)
 
+# Used to delegate SP
+
+@assist.action('delegation')
+def r_delegation(number,username):
+    check = eligible_delegation(St_username,number)
+    if check == 'eligible':
+        resp = ask('You can use the link below to delegate using Steemconnect')
+        link = ("https://steemconnect.com/sign/delegate-vesting-shares?delegator="+St_username+"&delegatee="+username+"&vesting_shares="+str(number)+"%20SP")
+        resp.link_out('The Link', link)
+        return resp
+    else:
+        return ask("Error: "+check) # To show the type of error
+        
+# To Claim all rewards
+
+@assist.action('claim')
+def r_claim():
+    try:
+        user = Steemian(sc.me()["name"])
+        claim_reward_balance = ClaimRewardBalance('account', user.rewards[0], user.rewards[1], user.rewards[2])
+        sc.broadcast([claim_reward_balance.to_operation_structure()])
+        return ask('You have sucessfully claimed %s, %s and %s' % (user.rewards[0],user.rewards[1],user.rewards[2]))
+    except: # If the user didn't connect his account
+        return ask('Please connect your account before using this command')
+
+@assist.action('openreplies') # Open a link to replies
+def r_openreplies():
+    user = Steemian(St_username)	  
+    return ask('Click the button below to open your replies').link_out('Replies',(user.bloglink+'/recent-replies'))
+
+
+@assist.action('opencomments') # Open a link to comments
+def r_opencomments():
+    user = Steemian(St_username)	  
+    return ask('Click the button below to open your comments').link_out('Comments',(user.bloglink+'/comments'))
 
 # Allows setting the access token and Shows the page when user successfully authorizes the app
 
