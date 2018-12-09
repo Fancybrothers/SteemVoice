@@ -97,7 +97,7 @@ def eligible_delegation(user,num): # To check if the delegation is possible
     user = Steemian(user)
     if user.powerdown:
         return ('You are powering down')
-    elif user.availablesp < num:
+    elif user.availablesp < float(num):
         return ('Insufficient Available Steempower')
     else: # If the user isn't powering down and there's enough SP
         return ('eligible')
@@ -355,6 +355,36 @@ def r_openreplies():
 def r_opencomments():
     user = Steemian(St_username)	  
     return ask('Click the button below to open your comments').link_out('Comments',(user.bloglink+'/comments'))
+
+@assist.action('delegations') # To show the list of delegations
+def r_delegations():
+    delegations = s.get_vesting_delegations(St_username, '', 100)
+    if len(delegations) == 0:
+	    return ask('No active delegations')
+    else:
+        resp = ask('Choose one:').build_carousel()
+        for i in range(len(delegations)):
+            resp.add_item(delegations[i]['delegatee'],
+                          key=(str(i)), # This key will be used if the user chooses a certain post
+                          description= str(round(c.vests_to_sp(Amount(delegations[i]['vesting_shares']).amount)))+" SP", # To convert vests to SP
+                          img_url='https://steemitimages.com/u/'+delegations[i]['delegatee']+'/avatar'  # To get the avatar image of the delegatee
+                          )	
+            
+        return resp
+
+@assist.action('cdelegations') # To cancel a delegation
+def r_cdelegations(OPTION):
+    OPTION = int(OPTION)
+    delegations = s.get_vesting_delegations(St_username, '', 100)
+    resp = ask('Click the button below to cancel the delegation')
+    resp.card(title=delegations[OPTION]['delegatee'],
+              text=str(round(c.vests_to_sp(Amount(delegations[OPTION]['vesting_shares']).amount)))+" SP",
+              img_url='https://steemitimages.com/u/'+delegations[OPTION]['delegatee']+'/avatar',
+              img_alt='test', # This field is required
+              link=("https://steemconnect.com/sign/delegate-vesting-shares?delegator="+St_username+"&delegatee="+delegations[OPTION]['delegatee']+"&vesting_shares=0%20SP"),
+              linkTitle='Cancel Delegation'		  
+              )
+    return resp
 
 # Allows setting the access token and Shows the page when user successfully authorizes the app
 
