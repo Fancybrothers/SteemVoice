@@ -23,6 +23,7 @@ Steem Voice is a (WIP) Google Assistant app designed for Steemit users to help t
 - Open my comments / Returns a button to the user's comments
 - Open replies / Returns a button to the user's replies
 - Delegate (number) to (user) / Returns a Steemconnect link for the delegation
+- I want to cancel a delegation / Displays a list of the users you are delegating to and allows you to easily cancel the delegation.
 #### Advanced Commands
 - Follow (user) / To follow a certain user
 - Unfollow (user) / To unfollow a certain user
