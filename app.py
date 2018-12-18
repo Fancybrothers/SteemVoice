@@ -6,7 +6,7 @@ from steem.blog import Blog
 from steem.account import Account
 from steem.amount import Amount
 from steemconnect.client import Client
-from steemconnect.operations import Follow, Unfollow, Mute, ClaimRewardBalance, Comment, CommentOptions
+from steemconnect.operations import Follow, Unfollow, Mute, ClaimRewardBalance, Comment, CommentOptions, Vote
 import requests, json, os, random, string
 
 St_username = "" 
@@ -248,7 +248,7 @@ def r_feed():
 def r_login():
     login_url = sc.get_login_url( 
         str(os.environ.get('server')) + "/login",  # This is the callback URL
-        "login,custom_json,comment", # The scopes needed (login allows us to verify the user'steem identity while custom_json allows us to Follow, unfollow and mute)
+        "login,custom_json,comment,vote", # The scopes needed (login allows us to verify the user'steem identity while custom_json allows us to Follow, unfollow and mute)
     )
     resp = ask("Please use the button below to login with SteemConnect")
     resp.link_out('the login page', login_url) # To return the button that takes the user to the login page
@@ -413,9 +413,8 @@ def r_transfer(number,currency,username):
 @assist.action('userposts')
 def r_userposts(username):
     global posts
-    print(username+'.')
     discussion_query = {
-        "tag": username,
+        "tag": username.replace(' ', ''),
         "limit": 8,
     }
     posts = s.get_discussions_by_blog(discussion_query)	
@@ -436,23 +435,50 @@ def r_comment(any):
     return ask('Would you like to confirm this comment: %s' % comment).suggest('Yes','No')
 
 # If the user confirms the comment, the app will broadcast the comment  
+
 @assist.action('broadcastcomment')
 def r_broadcastcomment(yon):
-    global comment,posts,Option
-    if yon == 'Yes':
+    try:
+        global comment,posts,Option
+        if yon == 'Yes':
+            finalcomment = Comment(
+            sc.me()["name"], #author
+            randomperm(10), #permlink
+            comment, #body
+            parent_author=posts[Option]['author'],
+            parent_permlink=posts[Option]['permlink'],
+            )
 
-        finalcomment = Comment(
-        sc.me()["name"], #author
-        randomperm(10), #permlink
-        comment, #body
-        parent_author=posts[Option]['author'],
-        parent_permlink=posts[Option]['permlink'],
-        )
+            sc.broadcast([finalcomment.to_operation_structure()])
+            return ask('broadcasting %s to %s' % (comment,posts[Option]['title']))
+        else:   
+            return ask('Canceling comment')
+    except: # If the user didn't connect his account
+        return ask('Please connect your account before using this command')
 
-        sc.broadcast([finalcomment.to_operation_structure()])
-        return ask('broadcasting %s to %s' % (comment,posts[Option]['title']))
-    else:   
-        return ask('Canceling comment')
+# To save the upvote percentage in a variable called percent and ask the user for confirmation
+
+@assist.action('upvoteconfirmation')
+def r_upvote(number):
+    if (int(number)<=100) and (0<=int(number)): 
+        global percent
+        percent = number
+        return ask('Would you like to confirm this upvote: %s percent' % percent).suggest('Yes','No')
+    else:
+        return ask('Please make sure to enter a valid percent')
+
+
+# If the user confirms the upvote, the app will broadcast the upvote  
+
+@assist.action('broadcastupvote')
+def r_broadcastupvote(yon):
+    try:
+        global percent, posts, Option
+        vote = Vote(sc.me()['name'], posts[Option]["author"], posts[Option]["permlink"], int(percent))
+        sc.broadcast([vote.to_operation_structure()])
+        return ask('broadcasting upvote to %s' % posts[Option]['title'])
+    except: # If the user didn't connect his account
+        return ask('Please connect your account before using this command')
 
 # Allows setting the access token and Shows the page when user successfully authorizes the app
 
@@ -464,4 +490,4 @@ def loginpage():
 	
 # run Flask app
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True) 
