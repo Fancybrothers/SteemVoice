@@ -6,8 +6,8 @@ from steem.blog import Blog
 from steem.account import Account
 from steem.amount import Amount
 from steemconnect.client import Client
-from steemconnect.operations import Follow, Unfollow, Mute, ClaimRewardBalance
-import requests, json
+from steemconnect.operations import Follow, Unfollow, Mute, ClaimRewardBalance, Comment, CommentOptions
+import requests, json, os, random, string
 
 St_username = "" 
 Tag = ''
@@ -17,10 +17,7 @@ app = Flask(__name__)
 app.config['ASSIST_ACTIONS_ON_GOOGLE'] = True # To enable Rich Messages
 assist = Assistant(app, route='/api')
 posts = s.get_discussions_by_trending({"limit":"8"}) # To cache the top 8 trending posts
-client_id = "" # Steemconnect client id
-client_secret = "" # Steemconnect client secret
-server = '' # For testing purposes, you can change the server here.
-sc = Client(client_id=client_id, client_secret=client_secret)
+sc = Client(client_id=os.environ.get('client_id'), client_secret=os.environ.get('client_secret'))
 
 class Steemian:
     def __init__(self, St_username):
@@ -101,6 +98,17 @@ def eligible_delegation(user,num): # To check if the delegation is possible
         return ('Insufficient Available Steempower')
     else: # If the user isn't powering down and there's enough SP
         return ('eligible')
+
+def resteem(username,author):
+    if username == author:
+        return ('A post by %s' % username)
+    else:
+        return ('Resteemed')
+
+def randomperm(length):
+   letter = string.ascii_lowercase
+   return ''.join(random.choice(letter) for i in range(length))
+
    ##############################################################
    
  # Returns a welcome msg and refreshes the access token
@@ -195,23 +203,24 @@ def r_trendingposts(CTG,Tag):
     print(resp)			
     return resp
 
+@assist.action('userpostsrep') 
 @assist.action('r_openfeed')
 @assist.action('trendingresp') # To show a card of the post chosen
 def r_trendingresp(OPTION):
-    global posts
-    OPTION = int(OPTION) # This is the key of the chosen post
-    postlink = 'https://steemit.com/@'+posts[OPTION]['author']+'/'+posts[OPTION]['permlink']
+    global posts, Option
+    Option = int(OPTION) # This is the key of the chosen post
+    postlink = 'https://steemit.com/@'+posts[Option]['author']+'/'+posts[Option]['permlink']
     resp = ask('Click the button below to open the post')
-    date,time = posts[OPTION]['created'].split('T') 
-    resp.card(title=posts[OPTION]['title'],
-              text=('A post by %s created on %s at %s' % (posts[OPTION]['author'],date,time)),
-              img_url=getpostimg(OPTION),
+    date,time = posts[Option]['created'].split('T') 
+    resp.card(title=posts[Option]['title'],
+              text=('A post by %s created on %s at %s' % (posts[Option]['author'],date,time)),
+              img_url=getpostimg(Option),
               img_alt='test', # This field is required
               link=postlink,
               linkTitle='Open The post'		  
               )
 
-    return resp
+    return resp.suggest('Upvote the post', 'Write a comment')
 
 @assist.action('openblog') # Retruns a button to the user's blog
 def r_openblog():
@@ -238,8 +247,8 @@ def r_feed():
 @assist.action('login') 
 def r_login():
     login_url = sc.get_login_url( 
-        server + "/login",  # This is the callback URL
-        "login,custom_json", # The scopes needed (login allows us to verify the user'steem identity while custom_json allows us to Follow, unfollow and mute)
+        str(os.environ.get('server')) + "/login",  # This is the callback URL
+        "login,custom_json,comment", # The scopes needed (login allows us to verify the user'steem identity while custom_json allows us to Follow, unfollow and mute)
     )
     resp = ask("Please use the button below to login with SteemConnect")
     resp.link_out('the login page', login_url) # To return the button that takes the user to the login page
@@ -385,6 +394,65 @@ def r_cdelegations(OPTION):
               linkTitle='Cancel Delegation'		  
               )
     return resp
+
+
+# Transfer Steem or SBD
+
+@assist.action('transfer')
+def r_transfer(number,currency,username):
+    url = sc.hot_sign(
+        "transfer",
+        {
+            "to": username,
+            "amount": number+' '+currency.upper(),
+      },
+    )  
+    return ask('Click the button below to continue with your transfer:').link_out('Transfer',url)
+
+# Return a user's 8 latest posts
+@assist.action('userposts')
+def r_userposts(username):
+    global posts
+    print(username+'.')
+    discussion_query = {
+        "tag": username,
+        "limit": 8,
+    }
+    posts = s.get_discussions_by_blog(discussion_query)	
+    resp = ask('There you go:').build_carousel()
+    for i in range(len(posts)):
+        resp.add_item(posts[i]['title'],
+                        key=(str(i)),
+                        description=resteem(username,posts[i]['author']), 
+                        img_url=getpostimg(i)  # To get the avatar image of the delegatee
+                        )	
+    return resp
+
+# To save the comment in a variable called comment and ask the user for confirmation
+@assist.action('commentconfirmation')
+def r_comment(any):
+    global comment
+    comment = any
+    return ask('Would you like to confirm this comment: %s' % comment).suggest('Yes','No')
+
+# If the user confirms the comment, the app will broadcast the comment  
+@assist.action('broadcastcomment')
+def r_broadcastcomment(yon):
+    global comment,posts,Option
+    if yon == 'Yes':
+
+        finalcomment = Comment(
+        sc.me()["name"], #author
+        randomperm(10), #permlink
+        comment, #body
+        parent_author=posts[Option]['author'],
+        parent_permlink=posts[Option]['permlink'],
+        )
+
+        sc.broadcast([finalcomment.to_operation_structure()])
+        return ask('broadcasting %s to %s' % (comment,posts[Option]['title']))
+    else:   
+        return ask('Canceling comment')
 
 # Allows setting the access token and Shows the page when user successfully authorizes the app
 
