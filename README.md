@@ -24,11 +24,15 @@ Steem Voice is a (WIP) Google Assistant app designed for Steemit users to help t
 - Open replies / Returns a button to the user's replies
 - Delegate (number) to (user) / Returns a Steemconnect link for the delegation
 - I want to cancel a delegation / Displays a list of the users you are delegating to and allows you to easily cancel the delegation.
+- Transfer (number) steem/sbd to (user) / Returns a Steemconnect link for the transfer
+- What are the latest posts of (user) / Returns the last 8 posts from that user 
 #### Advanced Commands
 - Follow (user) / To follow a certain user
 - Unfollow (user) / To unfollow a certain user
 - Mute (user) / To mute a certain user
 - Claim rewards / To claim all of the user's rewards
+- Upvote post / To upvote the post last chosen from a list
+- Write a comment / To write a comment on the post last chosen from a list
 ### Contact Me
 You can get in touch with me on Discord  at Fancybrothers#7429 or on Steem.chat at fancybrothers.
 ### Donation
