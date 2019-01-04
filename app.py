@@ -9,13 +9,13 @@ from steemconnect.client import Client
 from steemconnect.operations import Follow, Unfollow, Mute, ClaimRewardBalance, Comment, CommentOptions, Vote
 import requests, json, os, random, string
 
-St_username = "" 
+St_username = "fancybrothers" 
 Tag = ''
 s = Steem()
 c = Converter()
 app = Flask(__name__)
-app.config['ASSIST_ACTIONS_ON_GOOGLE'] = True # To enable Rich Messages
-assist = Assistant(app, route='/api')
+assist = Assistant(app, route='/api', project_id=os.environ.get('project_id'))
+app.config['INTEGRATIONS'] = ['ACTIONS_ON_GOOGLE'] # To enable Rich Messages
 posts = s.get_discussions_by_trending({"limit":"8"}) # To cache the top 8 trending posts
 sc = Client(client_id=os.environ.get('client_id'), client_secret=os.environ.get('client_secret'))
 
@@ -152,7 +152,7 @@ def r_last_post():
     post = b.take(1)
     resp = ask('Your latest post is: \n'+ post[0]['title'])
     postlink = user.bloglink+'/'+post[0]['permlink']
-    resp.link_out('The post', postlink) # Is used to create a button that takes you to the post
+    resp.link_out('Open the post', postlink) # Is used to create a button that takes you to the post
     return resp
 	
 @assist.action('wallet')
@@ -199,8 +199,7 @@ def r_trendingposts(CTG,Tag):
                           img_url=getpostimg(i)
                           )				
         except IndexError: # If the available posts are less than 8 (mostly promoted ones)
-            break	
-    print(resp)			
+            break			
     return resp
 
 @assist.action('userpostsrep') 
@@ -215,9 +214,8 @@ def r_trendingresp(OPTION):
     resp.card(title=posts[Option]['title'],
               text=('A post by %s created on %s at %s' % (posts[Option]['author'],date,time)),
               img_url=getpostimg(Option),
-              img_alt='test', # This field is required
               link=postlink,
-              linkTitle='Open The post'		  
+              link_title='Open The post'		  
               )
 
     return resp.suggest('Upvote the post', 'Write a comment')
@@ -225,7 +223,7 @@ def r_trendingresp(OPTION):
 @assist.action('openblog') # Retruns a button to the user's blog
 def r_openblog():
     user = Steemian(St_username)	  
-    return ask('Click the button below to open your blog').link_out('Blog',user.bloglink)
+    return ask('Click the button below to open your blog').link_out('Open Blog',user.bloglink)
 
 @assist.action('openfeed') # Retruns a list of posts from the user's list
 def r_feed():
@@ -251,7 +249,7 @@ def r_login():
         "login,custom_json,comment,vote", # The scopes needed (login allows us to verify the user'steem identity while custom_json allows us to Follow, unfollow and mute)
     )
     resp = ask("Please use the button below to login with SteemConnect")
-    resp.link_out('the login page', login_url) # To return the button that takes the user to the login page
+    resp.link_out('Click Here', login_url) # To return the button that takes the user to the login page
     return resp
 
 # To check if the user successfully connected his account
@@ -337,7 +335,7 @@ def r_delegation(number,username):
     if check == 'eligible':
         resp = ask('You can use the link below to delegate using Steemconnect')
         link = ("https://steemconnect.com/sign/delegate-vesting-shares?delegator="+St_username+"&delegatee="+username+"&vesting_shares="+str(number)+"%20SP")
-        resp.link_out('The Link', link)
+        resp.link_out('Click here', link)
         return resp
     else:
         return ask("Error: "+check) # To show the type of error
@@ -357,13 +355,13 @@ def r_claim():
 @assist.action('openreplies') # Open a link to replies
 def r_openreplies():
     user = Steemian(St_username)	  
-    return ask('Click the button below to open your replies').link_out('Replies',(user.bloglink+'/recent-replies'))
+    return ask('Click the button below to open your replies').link_out('Open Replies',(user.bloglink+'/recent-replies'))
 
 
 @assist.action('opencomments') # Open a link to comments
 def r_opencomments():
     user = Steemian(St_username)	  
-    return ask('Click the button below to open your comments').link_out('Comments',(user.bloglink+'/comments'))
+    return ask('Click the button below to open your comments').link_out('Open Comments',(user.bloglink+'/comments'))
 
 @assist.action('delegations') # To show the list of delegations
 def r_delegations():
@@ -389,9 +387,8 @@ def r_cdelegations(OPTION):
     resp.card(title=delegations[OPTION]['delegatee'],
               text=str(round(c.vests_to_sp(Amount(delegations[OPTION]['vesting_shares']).amount)))+" SP",
               img_url='https://steemitimages.com/u/'+delegations[OPTION]['delegatee']+'/avatar',
-              img_alt='test', # This field is required
               link=("https://steemconnect.com/sign/delegate-vesting-shares?delegator="+St_username+"&delegatee="+delegations[OPTION]['delegatee']+"&vesting_shares=0%20SP"),
-              linkTitle='Cancel Delegation'		  
+              link_title='Cancel Delegation'		  
               )
     return resp
 
@@ -407,7 +404,7 @@ def r_transfer(number,currency,username):
             "amount": number+' '+currency.upper(),
       },
     )  
-    return ask('Click the button below to continue with your transfer:').link_out('Transfer',url)
+    return ask('Click the button below to continue with your transfer:').link_out('Click here',url)
 
 # Return a user's 8 latest posts
 @assist.action('userposts')
