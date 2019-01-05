@@ -508,6 +508,7 @@ def r_reguser():
         database.update(name)
         with open('usernames.json', 'w') as new:
             json.dump(database, new)
+        return ask('Done %s was sucessfully added.' % sc.me()['name'] )
     except:
         return ask('Please connect your account before using this command')
 
