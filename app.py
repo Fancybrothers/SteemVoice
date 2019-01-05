@@ -9,7 +9,7 @@ from steemconnect.client import Client
 from steemconnect.operations import Follow, Unfollow, Mute, ClaimRewardBalance, Comment, CommentOptions, Vote
 import requests, json, os, random, string
 
-St_username = "fancybrothers" 
+St_username = "" 
 Tag = ''
 s = Steem()
 c = Converter()
@@ -456,11 +456,16 @@ def r_broadcastcomment(yon):
 # To save the upvote percentage in a variable called percent and ask the user for confirmation
 
 @assist.action('upvoteconfirmation')
-def r_upvote(number):
+def r_upvote(number,vote):
     if (int(number)<=100) and (0<=int(number)): 
-        global percent
-        percent = number
-        return ask('Would you like to confirm this upvote: %s percent' % percent).suggest('Yes','No')
+        global percent, votetype
+        votetype = vote
+        if votetype == 'upvote':
+            percent = int(number)
+            return ask('Would you like to confirm this upvote: %s percent' % percent).suggest('Yes','No')
+        else:
+            percent = -int(number)
+            return ask('Would you like to confirm this downvote: %s percent' % (-1*percent)).suggest('Yes','No')
     else:
         return ask('Please make sure to enter a valid percent')
 
@@ -470,12 +475,42 @@ def r_upvote(number):
 @assist.action('broadcastupvote')
 def r_broadcastupvote(yon):
     try:
-        global percent, posts, Option
+        global percent, posts, Option, votetype
         vote = Vote(sc.me()['name'], posts[Option]["author"], posts[Option]["permlink"], int(percent))
         sc.broadcast([vote.to_operation_structure()])
-        return ask('broadcasting upvote to %s' % posts[Option]['title'])
+        if votetype =='upvote':
+            return ask('broadcasting upvote to %s' % posts[Option]['title'])
+        else:
+            return ask('broadcasting downvote to %s' % posts[Option]['title'])
     except: # If the user didn't connect his account
         return ask('Please connect your account before using this command')
+
+# Return a card with the user's name, avatar and description 
+
+@assist.action('whois')
+def r_whois(username):
+    user = Steemian(username)
+    resp = ask('There you go')
+    resp.card(title='Name: %s' % user.data["json_metadata"]["profile"]['name'],
+          text='Description: %s' % user.data["json_metadata"]["profile"]['about'],
+          img_url='https://steemitimages.com/u/'+username+'/avatar',		  
+            )
+    return resp
+
+# Enables users to reg their usernames into the database
+
+@assist.action('reguser')
+def r_reguser():
+    try:
+        with open('usernames.json') as old:
+            database = json.load(old)
+        name = {sc.me()['name']:sc.me()['name']}
+        database.update(name)
+        with open('usernames.json', 'w') as new:
+            json.dump(database, new)
+    except:
+        return ask('Please connect your account before using this command')
+
 
 # Allows setting the access token and Shows the page when user successfully authorizes the app
 
